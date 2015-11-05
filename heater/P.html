@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<head>
+		<style type="text/css">
+			body{
+				font-size:1.5em;
+			}
+			button{
+				background-color:#387cc4;
+				color:white;
+				border-style: none;
+				font-size:1em;
+				height:2em;
+				font-weight:bold;
+				margin-top:1em;
+			}
+			input{
+				height:50px;
+				font-size:1.5em;
+				text-align:center;
+			}
+		</style>
+		<title>P制御</title>
+		<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+		<script type="text/javascript" src="http://dygraphs.com/dygraph-dev.js"></script>
+	</head>
+	<body>
+
+		<h3 style="text-align: center;">P制御</h3>
+
+
+		<div id="div_g" style="margin:0 auto; width:600px; height:400px;"></div>
+		<script type="text/javascript">
+			//default global variables
+			var targetTempereture = 80.0;
+			var envTempereture;
+			var currentTempereture;
+			var coeffA;
+			var isNotInitialized = true;
+			var pGain;
+			//data container for plot
+			var globalTime =0;
+			var data = [];
+
+			//instanciate Dygraph object
+			var g = new Dygraph(
+					document.getElementById("div_g"),
+					data,
+					{
+						drawPoints: true,
+						strokeWidth:5,
+						pointSize:6,
+						legend: "always",
+						valueRange: [0.0, 150.0],
+						labels: ['Time', '水温', '外気温','目標温度'],
+						xlabel: "時刻",
+						ylabel: "温度"
+					}
+			);
+
+			//update process
+			function updateTarget() {
+				///////////////////////////////
+				// TARGET MODEL BEGIN
+				///////////////////////////////
+				data.push([globalTime, currentTempereture,envTempereture, targetTempereture ]);
+				var diff = -1.0 * coeffA * (currentTempereture - envTempereture ) + pGain*(targetTempereture - currentTempereture);
+					currentTempereture += diff;
+				///////////////////////////////
+				// TARGET MODEL END
+				///////////////////////////////
+			}
+
+			function update(){
+				drawChart = setInterval(function() {
+					//get parameters
+					if (isNotInitialized ) {
+						////////////////////////////////////
+						// PARAMETER SETTER BEGIN
+						////////////////////////////////////
+						coeffA = Math.abs(parseFloat(document.param.pCoeffA.value));
+						currentTempereture =  parseFloat(document.param.pCurrent.value);
+						envTempereture =  parseFloat(document.param.pEnv.value);
+						pGain=  parseFloat(document.param.pPGain.value);
+						targetTempereture=  parseFloat(document.param.pR.value);
+						////////////////////////////////////
+						// PARAMETER SETTER END
+						////////////////////////////////////
+						for (globalTime = 0; globalTime < 4; globalTime++) {
+							updateTarget();
+						}
+						isNotInitialized = false;
+					} else {
+						updateTarget();
+						globalTime ++;
+					}
+					g.updateOptions( { 'file': data } );
+				},
+				1000
+			);
+		}
+
+		function reset() {
+			globalTime = 0;
+			data = [];
+			clearInterval(drawChart);
+			g.updateOptions( { 'file': data } );
+			isNotInitialized = true;
+		}
+</script>
+
+<!-- UI components -->
+<!-- star/ stop -->
+<div style="margin:0 auto 2em; text-align:center; width:600px;">
+<button name="StartButton"  onclick="update()">Start</button>
+<button name="StopButton"   onclick="clearInterval(drawChart)">Stop</button>
+<button name="ParamButton"  onclick="reset()">パラメータの読込&Reset</button>
+</div>
+<hr>
+<!-- parameter settings -->
+<div style="margin:0 auto;width:600px;text-align:center;">
+<form name="param"  action="">
+	温度定数\(a (a>0)\) : <input name="pCoeffA"  type="text" value="0.2" size="4"/><br>
+	初期水温\(y(0) \) : <input name="pCurrent"  type="text" value="10.0" size="4"/><br>
+	環境温度\(K\) : <input name="pEnv"  type="text" value="25.0" size="4"/><br>
+	Pゲイン\(K_p\) : <input name="pPGain"  type="text" value="0.4" size="4"/><br>
+	目標温度\(R\) : <input name="pR"  type="text" value="80.0" size="4"/><br>
+</form>
+		<!-- model description -->
+モデル：\[ \frac{dy(t)}{dt} = -a(y(t)-K)  +K_p (R(t)-y(t))\](\(y(t)\):水温)
+
+</div>
+
+
+</body>
+</html>
+
