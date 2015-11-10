@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style type="text/css">
+			body{
+				font-size:1.5em;
+			}
+			button{
+				background-color:#387cc4;
+				color:white;
+				border-style: none;
+				font-size:1em;
+				height:2em;
+				font-weight:bold;
+				margin-top:1em;
+			}
+			input{
+				height:50px;
+				font-size:1.5em;
+				text-align:center;
+			}
+		</style>
+		<title>P制御(Ki固定, Kp変化)</title>
+		<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+		<script type="text/javascript" src="http://dygraphs.com/dygraph-dev.js"></script>
+	</head>
+	<body>
+
+		<h3 style="text-align: center;">PI制御(Ki固定, Kp変化)\(p(K_p, K_i) = \frac{-(a+bK_p)\pm\sqrt{(a+bK_p)^2-4bK_i}}{2} \)</h3>
+		<div id="gain" style="text-align:center;">K_p</div>
+		<div id="div_g" style="margin:0 auto; width:600px; height:400px;"></div>
+		<script type="text/javascript">
+			//default global variables
+			var coeffA;
+			var coeffB;
+			var div = 0.5;
+			var isNotInitialized = true;
+			//data container for plot
+			var gainP=0.0;
+			var gainI=0.0;
+			var data = [];
+
+			//instanciate Dygraph object
+			var g = new Dygraph(
+					document.getElementById("div_g"),
+					data,
+					{
+						drawPoints: true,
+						strokeWidth:0,
+						pointSize:6,
+						legend: "always",
+						valueRange: [-10.0, 10.0],
+						dateWindow: [-10.0,10.0],
+						labels: ['Gain','Root'],
+						xlabel: "Re",
+						ylabel: "Im"
+					}
+			);
+
+			//update process
+			function updateTarget() {
+				///////////////////////////////
+				// TARGET MODEL BEGIN
+				///////////////////////////////
+				var D1 = (coeffA+coeffB * gainP*div);
+				var D12 = D1*D1;
+				var D = D12 -4.0*coeffB * gainI;
+				var x,y1, y2;
+				x = -0.5 *(coeffA +coeffB *gainP*div);
+				if (D > 0.01) {
+					data.push([x+0.5*Math.sqrt(D),0]);
+					data.push([x-0.5*Math.sqrt(D),0]);
+				} else if (D<= 0.01 && D >0) {
+					data.push([x,0]);
+				} else if (D>= -0.01 && D <0) {
+					data.push([x,0]);
+				} else {
+					data.push([x,+0.5*Math.sqrt(-D)]);
+					data.push([x,-0.5*Math.sqrt(-D)]);
+				}
+
+				///////////////////////////////
+				// TARGET MODEL END
+				///////////////////////////////
+			}
+
+			function update(){
+				drawChart = setInterval(function() {
+					//get parameters
+					////////////////////////////////////
+					// PARAMETER SETTER BEGIN
+					////////////////////////////////////
+
+					if (isNotInitialized ) {
+						coeffA = Math.abs(parseFloat(document.param.pA.value));
+						coeffB = Math.abs(parseFloat(document.param.pB.value));
+						gainI = Math.abs(parseFloat(document.param.pKI.value));
+						////////////////////////////////////
+						// PARAMETER SETTER END
+						////////////////////////////////////
+						isNotInitialized = false;
+						for ( gainP = 0; gainP < 1; gainP++) {
+							updateTarget();
+						}
+					} 
+					updateTarget();
+					var temp;
+					temp = document.getElementById("gain");
+					temp.innerHTML = "K_p"+String((gainP*div).toFixed(2));
+					gainP++;
+					//data.shift();
+					g.updateOptions( { 'file': data } );
+				},
+				1000
+			);
+		}
+
+		function reset() {
+			gainP = 0;
+			data = [];
+			clearInterval(drawChart);
+			g.updateOptions( { 'file': data } );
+			isNotInitialized = true;
+		}
+</script>
+
+<!-- UI components -->
+<!-- star/ stop -->
+<div style="margin:0 auto 2em; text-align:center; width:600px;">
+<button name="StartButton"  onclick="update()">Start</button>
+<button name="StopButton"   onclick="clearInterval(drawChart)">Stop</button>
+<button name="ParamButton"  onclick="reset()">パラメータの読込&Reset</button>
+</div>
+<hr>
+<!-- parameter settings -->
+<div style="margin:0 auto;width:600px;text-align:center;">
+<form name="param"  action="">
+	a : <input name="pA"  type="text" value="1.0" size="4"/><br>
+	b : <input name="pB"  type="text" value="1.0" size="4"/><br>
+	K_i : <input name="pKI"  type="text" value="10.0" size="4"/><br>
+</form>
+</div>
+
+
+</body>
+</html>
+
